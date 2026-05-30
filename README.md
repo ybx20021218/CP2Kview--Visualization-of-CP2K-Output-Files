@@ -174,6 +174,3 @@ If you find bugs, parsing problems, or have feature suggestions, please leave a 
 ybx20021218@163.com
 ```
 
-## License
-
-No license file has been selected yet. Add a `LICENSE` file before publishing the repository as open source.
