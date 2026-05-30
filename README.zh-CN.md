@@ -170,6 +170,3 @@ python -m http.server 8000
 ybx20021218@163.com
 ```
 
-## 许可证
-
-当前仓库还没有选择开源许可证。正式发布到 GitHub 前，建议先添加 `LICENSE` 文件。
