@@ -1,8 +1,3 @@
-# My Project
-
-[English](README.md) | [简体中文](README.zh-CN.md)
-
----
 # cp2kview-demo
 
 `cp2kview-demo` is a lightweight, browser-based visualizer for CP2K-related structure and output files. It is a fully personal project developed independently, currently published as a demo version for open-source sharing and testing.
@@ -174,3 +169,6 @@ If you find bugs, parsing problems, or have feature suggestions, please leave a 
 ybx20021218@163.com
 ```
 
+## License
+
+No license file has been selected yet. Add a `LICENSE` file before publishing the repository as open source.

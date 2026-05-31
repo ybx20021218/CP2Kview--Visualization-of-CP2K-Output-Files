@@ -389,8 +389,10 @@
       parameters: [],
       files: [],
       energies: [],
+      energyBreakdowns: [],
       energySource: "",
       scf: [],
+      scfBlocks: [],
       scfRuns: [],
       steps: [],
       optimization: { optimizer: null, converged: false, steps: [] },
@@ -404,11 +406,12 @@
       errors: [],
     };
 
-    let inScf = false;
+    let scfState = { active: false, block: null };
     let inTiming = false;
     let currentKind = null;
     let currentOptStep = null;
     let currentMdStep = null;
+    let currentEnergyBreakdown = null;
 
     lines.forEach((rawLine, index) => {
       const line = rawLine.trim();
@@ -423,8 +426,9 @@
       readFiles(result, line, lineNumber);
       readAtomsAndKinds(result, line, lineNumber);
       currentKind = readKindDetails(result, line, lineNumber, currentKind);
+      currentEnergyBreakdown = readEnergyBreakdownLine(result, rawLine, lineNumber, currentEnergyBreakdown);
       readEnergyLine(result, line, lineNumber);
-      inScf = readScfLine(result, line, lineNumber, inScf);
+      scfState = readScfLine(result, line, lineNumber, scfState);
       currentOptStep = readOptimizationLine(result, line, lineNumber, currentOptStep);
       currentMdStep = readMdLine(result, line, lineNumber, currentMdStep);
       readCellLine(result, line, lineNumber);
@@ -439,6 +443,8 @@
       if (/ERROR|ABORT|FAILED|NaN|SCF run NOT converged/i.test(line)) result.errors.push({ line: lineNumber, text: line });
     });
 
+    assignEnergyBreakdownSteps(result);
+    assignScfBlockSteps(result);
     return result;
   }
 
@@ -544,18 +550,111 @@
     result.energies.push({ line: lineNumber, label, value, unit });
   }
 
-  function readScfLine(result, line, lineNumber, inScf) {
-    let active = inScf;
-    if (/SCF WAVEFUNCTION OPTIMIZATION|STARTING SELF-CONSISTENT FIELD/i.test(line)) active = true;
+  function readEnergyBreakdownLine(result, rawLine, lineNumber, currentBlock) {
+    const line = rawLine.trim();
+    const rule = energyBreakdownRules().find((item) => item.regex.test(line));
+    if (!rule) {
+      if (currentBlock && currentBlock.complete && lineNumber - currentBlock.lineEnd > 2) return null;
+      return currentBlock;
+    }
+
+    const match = line.match(rule.regex);
+    const valueText = match && match[1] ? match[1] : "";
+    const value = Number(valueText);
+    const needsNewBlock =
+      rule.key === "overlap" ||
+      !currentBlock ||
+      currentBlock.complete ||
+      lineNumber - currentBlock.lineEnd > 12 ||
+      Boolean(currentBlock.values[rule.key]);
+
+    if (needsNewBlock) {
+      currentBlock = {
+        index: result.energyBreakdowns.length + 1,
+        lineStart: lineNumber,
+        lineEnd: lineNumber,
+        complete: false,
+        entries: [],
+        values: {},
+      };
+      result.energyBreakdowns.push(currentBlock);
+    }
+
+    const entry = {
+      key: rule.key,
+      label: line.replace(/\s*:\s*[-+]?(?:\d+\.?\d*|\.\d+)(?:[Ee][-+]?\d+)?\s*$/, "").trim(),
+      line: lineNumber,
+      text: line,
+      value,
+      valueText,
+    };
+    currentBlock.entries.push(entry);
+    currentBlock.values[rule.key] = entry;
+    currentBlock.lineEnd = lineNumber;
+    if (rule.key === "total") currentBlock.complete = true;
+    return currentBlock;
+  }
+
+  function energyBreakdownRules() {
+    const number = `(${numberPattern})`;
+    return [
+      { key: "overlap", regex: new RegExp(`^Overlap energy of the core charge distribution\\s*:\\s*${number}\\s*$`, "i") },
+      { key: "self", regex: new RegExp(`^Self energy of the core charge distribution\\s*:\\s*${number}\\s*$`, "i") },
+      { key: "coreHamiltonian", regex: new RegExp(`^Core Hamiltonian energy\\s*:\\s*${number}\\s*$`, "i") },
+      { key: "hartree", regex: new RegExp(`^Hartree energy\\s*:\\s*${number}\\s*$`, "i") },
+      { key: "xc", regex: new RegExp(`^Exchange-correlation energy\\s*:\\s*${number}\\s*$`, "i") },
+      { key: "total", regex: new RegExp(`^Total(?:\\s+FORCE_EVAL\\s*\\([^)]+\\))?\\s+energy(?:\\s+\\[[^\\]]+\\])?\\s*:\\s*${number}\\s*$`, "i") },
+    ];
+  }
+
+  function assignEnergyBreakdownSteps(result) {
+    const blocks = result.energyBreakdowns || [];
+    const steps = result.optimization.steps || [];
+    blocks.forEach((block, index) => {
+      const step = steps[index] || null;
+      if (!step) return;
+      block.step = step.step;
+      step.energyBreakdown = block;
+    });
+  }
+
+  function readScfLine(result, line, lineNumber, state) {
+    const next = state || { active: false, block: null };
+    let active = next.active;
+    let block = next.block;
+    if (/SCF WAVEFUNCTION OPTIMIZATION|STARTING SELF-CONSISTENT FIELD/i.test(line)) {
+      active = true;
+      block = createScfBlock(result, lineNumber, line);
+    }
+
+    if (/^Step\s+Update method\s+Time\s+Convergence\s+Total energy\s+Change/i.test(line)) {
+      if (!block) block = createScfBlock(result, lineNumber, "");
+      active = true;
+      block.headerLine = lineNumber;
+      block.headerText = "Step  Update method  Time  Convergence  Total energy  Change";
+      block.lineEnd = lineNumber;
+      return { active, block };
+    }
 
     const converged = line.match(/SCF run converged in\s+(\d+)\s+steps/i);
     if (converged) {
-      result.scfRuns.push({ line: lineNumber, converged: true, steps: Number(converged[1]), text: line });
-      return false;
+      if (!block) block = createScfBlock(result, lineNumber, "");
+      block.lineEnd = lineNumber;
+      block.statusLine = lineNumber;
+      block.converged = true;
+      block.steps = Number(converged[1]);
+      block.statusText = line;
+      result.scfRuns.push({ line: lineNumber, converged: true, steps: Number(converged[1]), text: line, blockIndex: block.index });
+      return { active: false, block: null };
     }
     if (/SCF run NOT converged/i.test(line)) {
-      result.scfRuns.push({ line: lineNumber, converged: false, text: line });
-      return false;
+      if (!block) block = createScfBlock(result, lineNumber, "");
+      block.lineEnd = lineNumber;
+      block.statusLine = lineNumber;
+      block.converged = false;
+      block.statusText = line;
+      result.scfRuns.push({ line: lineNumber, converged: false, text: line, blockIndex: block.index });
+      return { active: false, block: null };
     }
 
     const convergence = line.match(/(?:convergence|Conv|RMS).*?([-+]?(?:\d+\.?\d*|\.\d+)(?:[Ee][-+]?\d+)?)/i);
@@ -568,10 +667,63 @@
       if (values.length >= 2) {
         result.scf.push({ line: lineNumber, kind: "iteration", iteration: values[0], values: values.slice(1), text: line });
       }
+      const row = parseScfIterationRow(line, lineNumber);
+      if (row) {
+        if (!block) block = createScfBlock(result, lineNumber, "");
+        block.iterations.push(row);
+        block.lineStart = Math.min(block.lineStart, block.headerLine || row.line);
+        block.lineEnd = row.line;
+      }
     }
 
-    if (active && /ENERGY\||Total FORCE_EVAL/i.test(line)) return false;
-    return active;
+    if (active && /ENERGY\||Total FORCE_EVAL/i.test(line)) return { active: false, block: null };
+    return { active, block };
+  }
+
+  function createScfBlock(result, lineNumber, text) {
+    const block = {
+      index: result.scfBlocks.length + 1,
+      lineStart: lineNumber,
+      lineEnd: lineNumber,
+      headerLine: null,
+      headerText: "Step  Update method  Time  Convergence  Total energy  Change",
+      startText: text || "",
+      iterations: [],
+      converged: null,
+      steps: null,
+      statusLine: null,
+      statusText: "",
+    };
+    result.scfBlocks.push(block);
+    return block;
+  }
+
+  function parseScfIterationRow(line, lineNumber) {
+    const number = numberPattern;
+    const regex = new RegExp(`^(\\d+)\\s+(.+)\\s+(${number})\\s+(${number})\\s+(${number})\\s+(${number})\\s*$`);
+    const match = line.match(regex);
+    if (!match) return null;
+    return {
+      line: lineNumber,
+      step: Number(match[1]),
+      updateMethod: match[2].trim(),
+      time: match[3],
+      convergence: match[4],
+      totalEnergy: match[5],
+      change: match[6],
+      text: line,
+    };
+  }
+
+  function assignScfBlockSteps(result) {
+    const blocks = result.scfBlocks || [];
+    const steps = result.optimization.steps || [];
+    blocks.forEach((block, index) => {
+      const step = steps[index] || null;
+      if (!step) return;
+      block.optStep = step.step;
+      step.scfBlock = block;
+    });
   }
 
   function readOptimizationLine(result, line, lineNumber, currentStep) {

@@ -17,6 +17,7 @@
           </div>
         </div>
         <div class="toolbar">
+          <button id="resetLayoutBtn" class="tool-button" type="button" title="重置三栏画幅大小">重置画幅</button>
           <label class="tool-button" title="打开结构文件或 CP2K 输出文件">
             <input id="fileInput" type="file" accept=".xyz,.inp,.out,.restart,.pdb,.cif,.log,.txt" />
             <span>打开</span>
@@ -51,6 +52,8 @@
           </section>
         </aside>
 
+        <div class="layout-splitter layout-splitter-left" data-layout-splitter="left" role="separator" aria-label="调整左侧项目栏宽度"></div>
+
         <section class="viewer-column">
           <div class="viewer-wrap">
             <canvas id="structureCanvas" width="1200" height="820" aria-label="结构查看器"></canvas>
@@ -82,6 +85,8 @@
           </div>
         </section>
 
+        <div class="layout-splitter layout-splitter-right" data-layout-splitter="right" role="separator" aria-label="调整右侧分析栏宽度"></div>
+
         <aside class="inspector">
           <nav class="inspector-tabs" aria-label="信息面板">
             <button class="active" data-panel-target="structurePanel" type="button">结构</button>
@@ -109,6 +114,13 @@
               <button class="panel-popout" data-popout="measurePanel" type="button" title="单独查看">⤢</button>
             </div>
             <div id="measureResult" class="measure-result">-</div>
+            <div class="measure-actions">
+              <button id="saveMeasureBtn" type="button" disabled>保留当前值</button>
+            </div>
+            <div class="saved-measurements">
+              <div class="saved-measurements-title">已保留测量</div>
+              <div id="savedMeasureList" class="saved-measure-list empty">暂无保留测量</div>
+            </div>
             <div id="selectionList" class="selection-list">未选择原子</div>
             <div id="trendPanel" class="trend-panel">
               <canvas id="trendCanvas" width="620" height="220" aria-label="趋势图"></canvas>
