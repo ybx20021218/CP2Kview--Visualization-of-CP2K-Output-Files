@@ -1,3 +1,4 @@
+🇨🇳 简体中文 | 🇺🇸 [English](README.md)
 # cp2kview-demo
 
 `cp2kview-demo` 是一个轻量级、基于浏览器的 CP2K 结构与输出文件可视化工具。该项目完全由个人独立开发，目前作为 demo 版本开源发布，方便大家测试和交流。
