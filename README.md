@@ -1,3 +1,8 @@
+# My Project
+
+[English](README.md) | [简体中文](README.zh-CN.md)
+
+---
 # cp2kview-demo
 
 `cp2kview-demo` is a lightweight, browser-based visualizer for CP2K-related structure and output files. It is a fully personal project developed independently, currently published as a demo version for open-source sharing and testing.
@@ -171,4 +176,11 @@ ybx20021218@163.com
 
 ## License
 
-No license file has been selected yet. Add a `LICENSE` file before publishing the repository as open source.
+This project is licensed under the GNU Affero General Public License v3.0 (AGPL-3.0).
+
+You are free to use, modify, and distribute this software under the terms of the AGPL-3.0 license.
+
+If you modify this software and make it available to users over a network, you must also make the complete corresponding source code available under the same license.
+
+See the LICENSE file for details.
+
