@@ -1,4 +1,9 @@
 # CP2K View
+<p align="center">
+  <a href="./README_CN.md">
+    <img src="https://img.shields.io/badge/简体中文-阅读文档-green">
+  </a>
+</p>
 
 Created by bxyao | ybx20021218@163.com
 
