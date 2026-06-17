@@ -1,4 +1,5 @@
 # CP2K View
+[English](README.md) | [简体中文](README.zh-CN.md)
 
 Created by bxyao | ybx20021218@163.com
 
