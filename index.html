@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CP2K View</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="./styles.css?v=20260614-i18n9" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-mark">C2</span>
+          <div>
+            <strong>CP2K View</strong>
+            <span data-i18n="app.tagline">Created by bxyao | ybx20021218@163.com</span>
+          </div>
+        </div>
+        <div class="toolbar">
+          <label class="language-control" data-i18n-title="toolbar.language.title" title="切换语言">
+            <select id="languageSelect" aria-label="切换语言" data-i18n-aria="toolbar.language.title">
+              <option value="zh">中文</option>
+              <option value="en">English</option>
+            </select>
+          </label>
+          <button id="resetLayoutBtn" class="tool-button" type="button" title="重置三栏画幅大小" data-i18n="toolbar.reset" data-i18n-title="toolbar.reset.title">重置画幅</button>
+          <label class="tool-button" title="打开结构文件或 CP2K 输出文件" data-i18n-title="toolbar.open.title">
+            <input id="fileInput" type="file" accept=".xyz,.inp,.out,.restart,.pdb,.cif,.log,.txt" />
+            <span data-i18n="toolbar.open">打开</span>
+          </label>
+          <button id="exportFrameBtn" class="tool-button" type="button" title="导出当前帧为 XYZ 原子坐标文件" data-i18n-title="toolbar.exportFrame.title" disabled>↧ XYZ</button>
+          <button id="clearBtn" class="icon-button" title="清空项目" data-i18n-title="toolbar.clear.title">×</button>
+        </div>
+      </header>
+
+      <main class="workspace">
+        <aside class="sidebar">
+          <section class="panel project-panel">
+            <div class="panel-head">
+              <h2 data-i18n="project.files">项目文件</h2>
+              <span id="fileCount">0</span>
+            </div>
+            <div id="fileList" class="file-list empty" data-i18n="project.empty">暂无文件</div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Multiwfn</h2>
+            </div>
+            <div class="multiwfn-box">
+              <label>
+                <span data-i18n="multiwfn.path">程序路径</span>
+                <input id="multiwfnPath" type="text" value="Multiwfn.exe" />
+              </label>
+              <button id="multiwfnCommandBtn" data-i18n="multiwfn.command">生成命令</button>
+              <pre id="multiwfnCommand" data-i18n="multiwfn.waiting">等待选择结构文件</pre>
+            </div>
+          </section>
+        </aside>
+
+        <div class="layout-splitter layout-splitter-left" data-layout-splitter="left" role="separator" aria-label="调整左侧项目栏宽度" data-i18n-aria="layout.left"></div>
+
+        <section class="viewer-column">
+          <div class="viewer-wrap">
+            <canvas id="structureCanvas" width="1200" height="820" aria-label="结构查看器" data-i18n-aria="viewer.canvas"></canvas>
+            <div id="viewerHud" class="viewer-hud" data-i18n="viewer.empty">未载入结构</div>
+            <div id="dropOverlay" class="drop-overlay" data-i18n="viewer.drop">释放文件以载入结构</div>
+          </div>
+
+          <div class="framebar">
+            <button id="prevFrameBtn" class="icon-button" title="上一帧" data-i18n-title="frame.prev">‹</button>
+            <button id="playBtn" class="icon-button" title="播放/暂停" data-i18n-title="frame.play">▶</button>
+            <button id="nextFrameBtn" class="icon-button" title="下一帧" data-i18n-title="frame.next">›</button>
+            <input id="frameSlider" type="range" min="0" max="0" value="0" />
+            <label class="mini-control" title="播放速度" data-i18n-title="frame.speed.title">
+              <span data-i18n="frame.speed">速度</span>
+              <input id="speedSlider" type="range" min="1" max="10" step="0.5" value="4" />
+              <output id="speedValue">4 fps</output>
+            </label>
+            <label class="mini-control" title="原子球大小" data-i18n-title="frame.atomSize.title">
+              <span data-i18n="frame.atomSize">球径</span>
+              <input id="atomSizeSlider" type="range" min="0.75" max="1.35" step="0.05" value="1" />
+              <output id="atomSizeValue">100%</output>
+            </label>
+            <label class="toggle-control" title="始终显示元素名" data-i18n-title="frame.atomLabels.title">
+              <input id="atomLabelsToggle" type="checkbox" />
+              <span data-i18n="frame.atomLabels">元素名</span>
+            </label>
+            <div id="atomStatus" class="atom-status" data-i18n="atom.status">点击原子查看元素、类型和坐标</div>
+            <span id="frameLabel">0 / 0</span>
+          </div>
+        </section>
+
+        <div class="layout-splitter layout-splitter-right" data-layout-splitter="right" role="separator" aria-label="调整右侧分析栏宽度" data-i18n-aria="layout.right"></div>
+
+        <aside class="inspector">
+          <nav class="inspector-tabs" aria-label="信息面板" data-i18n-aria="inspector.tabs">
+            <button class="active" data-panel-target="structurePanel" type="button" data-i18n="panel.structure">结构</button>
+            <button data-panel-target="measurePanel" type="button" data-i18n="panel.measure">测量</button>
+            <button data-panel-target="analysisPanel" type="button" data-i18n="panel.analysis">输出分析</button>
+            <button data-panel-target="inputPanel" type="button" data-i18n="panel.input">INP 结构</button>
+          </nav>
+
+          <section id="structurePanel" class="panel inspector-page active">
+            <div class="panel-head">
+              <h2 data-i18n="panel.structure">结构</h2>
+              <button class="panel-popout" data-popout="structurePanel" type="button" title="单独查看" data-i18n-title="panel.popout">⤢</button>
+            </div>
+            <dl id="structureStats" class="stats">
+              <dt data-i18n="stats.file">文件</dt><dd>-</dd>
+              <dt data-i18n="stats.type">类型</dt><dd>-</dd>
+              <dt data-i18n="stats.atoms">原子</dt><dd>-</dd>
+              <dt data-i18n="stats.frames">帧数</dt><dd>-</dd>
+            </dl>
+          </section>
+
+          <section id="measurePanel" class="panel inspector-page">
+            <div class="panel-head">
+              <h2 data-i18n="panel.measure">测量</h2>
+              <button class="panel-popout" data-popout="measurePanel" type="button" title="单独查看" data-i18n-title="panel.popout">⤢</button>
+            </div>
+            <div id="measureResult" class="measure-result">-</div>
+            <div class="measure-actions">
+              <button id="saveMeasureBtn" type="button" data-i18n="measure.save" disabled>保留当前值</button>
+              <button id="exportTrendBtn" type="button" data-i18n="measure.exportCsv">导出 CSV</button>
+            </div>
+            <div class="saved-measurements">
+              <div class="saved-measurements-title" data-i18n="measure.savedTitle">已保留测量</div>
+              <div id="savedMeasureList" class="saved-measure-list empty" data-i18n="measure.savedEmpty">暂无保留测量</div>
+            </div>
+            <div id="selectionList" class="selection-list" data-i18n="measure.selectionEmpty">未选择原子</div>
+            <div id="trendPanel" class="trend-panel">
+              <canvas id="trendCanvas" width="620" height="220" aria-label="趋势图" data-i18n-aria="measure.trend"></canvas>
+              <div class="trend-actions">
+                <span id="trendSummary">-</span>
+              </div>
+            </div>
+          </section>
+
+          <section id="analysisPanel" class="panel inspector-page analysis-panel">
+            <div class="panel-head">
+              <h2 data-i18n="panel.analysis">输出分析</h2>
+              <button class="panel-popout" data-popout="analysisPanel" type="button" title="单独查看" data-i18n-title="panel.popout">⤢</button>
+            </div>
+            <div id="analysisView" class="analysis-view" data-i18n="analysis.empty">暂无 out 文件结果</div>
+          </section>
+
+          <section id="inputPanel" class="panel inspector-page tree-panel">
+            <div class="panel-head">
+              <h2 data-i18n="panel.input">INP 结构</h2>
+              <button class="panel-popout" data-popout="inputPanel" type="button" title="单独查看" data-i18n-title="panel.popout">⤢</button>
+            </div>
+            <div id="inputTree" class="input-tree" data-i18n="input.empty">暂无 inp/restart 结构</div>
+          </section>
+        </aside>
+      </main>
+    </div>
+
+    <div id="chartWindow" class="chart-window" hidden>
+      <div id="chartWindowHead" class="chart-window-head">
+        <strong id="chartWindowTitle" data-i18n="chart.title">优化图表</strong>
+        <div class="chart-window-tools">
+          <button id="chartMinBtn" type="button" class="premium-btn" title="选中当前图表的最小值点" data-i18n-title="chart.min.title">
+            <span data-i18n="chart.min">最小值</span>
+          </button>
+          <button id="chartResetBtn" type="button" class="premium-btn" title="重置全部视图" data-i18n-title="chart.reset.title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+            <span data-i18n="chart.reset">重置</span>
+          </button>
+          <button id="chartCloseBtn" type="button" class="premium-btn" title="关闭" data-i18n-title="chart.close.title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+      </div>
+      <div id="chartWindowBody" class="chart-window-body"></div>
+      <div id="chartWindowInfo" class="chart-window-info"></div>
+    </div>
+
+    <script src="./src/parsers.js?v=20260614-i18n11"></script>
+    <script src="./src/viewer.js?v=20260614-i18n11"></script>
+    <script src="./src/utils.js?v=20260614-i18n11"></script>
+    <script src="./src/layout.js?v=20260614-i18n11"></script>
+    <script src="./src/files.js?v=20260614-i18n11"></script>
+    <script src="./src/measurement.js?v=20260614-i18n11"></script>
+    <script src="./src/saved-measurements.js?v=20260614-i18n11"></script>
+    <script src="./src/frame-controls.js?v=20260614-playicon1"></script>
+    <script src="./src/structure-info.js?v=20260614-i18n11"></script>
+    <script src="./src/inspector-panels.js?v=20260614-i18n11"></script>
+    <script src="./src/out-analysis-data.js?v=20260614-i18n11"></script>
+    <script src="./src/out-locator.js?v=20260614-i18n11"></script>
+    <script src="./src/out-analysis-panel.js?v=20260614-i18n11"></script>
+    <script src="./src/out-linker.js?v=20260614-i18n11"></script>
+    <script src="./src/input-panel.js?v=20260614-snippetconfirm1"></script>
+    <script src="./src/chart-data.js?v=20260614-energyalign1"></script>
+    <script src="./src/chart-drawing.js?v=20260614-logplot1"></script>
+    <script src="./src/chart-window-frame.js?v=20260614-i18n11"></script>
+    <script src="./src/optimization-chart-panel.js?v=20260614-logplot1"></script>
+    <script src="./src/chart-window-content.js?v=20260614-i18n11"></script>
+    <script src="./src/i18n.js?v=20260614-snippetconfirm1"></script>
+    <script src="./src/app.js?v=20260614-i18n11"></script>
+  </body>
+</html>

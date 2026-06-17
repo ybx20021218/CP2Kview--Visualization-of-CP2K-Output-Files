@@ -1,185 +1,212 @@
-# cp2kview-demo
+# CP2K View
 
-[English](README.md) | [简体中文](README.zh-CN.md)
+Created by bxyao | ybx20021218@163.com
 
----
+CP2K View is a browser-based viewer and analysis helper for CP2K structure, input, and output files. It runs locally in the browser and reads files with the browser File API, so files do not need to be uploaded to a server.
 
-`cp2kview-demo` is a lightweight, browser-based visualizer for CP2K-related structure and output files. It is a fully personal project developed independently, currently published as a demo version for open-source sharing and testing.
+This cleaned open-source version keeps the original main features and adds bilingual UI, stronger CP2K OUT analysis, INP tools, chart improvements, and a more maintainable source layout.
 
-The app runs entirely in the browser, so users can try it without installing any project dependencies. There is no backend service and no build step required for normal use.
+## What changed from the old prototype
 
-The current version focuses on quick inspection of molecular and periodic structures, CP2K input/output parsing, trajectory playback, geometry measurements, optimization analysis, and a simple Multiwfn command helper.
+- The old prototype was mostly concentrated in a few large JavaScript files. The new version splits the code into focused modules for file import, structure viewing, frame controls, measurements, OUT analysis, INP tools, chart windows, layout, and bilingual text.
+- Added Chinese / English UI switching. The selected language is saved in the local browser.
+- Expanded CP2K OUT analysis with overview data, energy breakdowns, SCF blocks, geometry optimization data, MD records, atom kinds, files/parameters, cell/stress/force records, timing, warnings, and errors.
+- Added OUT source locators so analysis rows can reveal the related source lines in the OUT file.
+- Added automatic structure-OUT linking when one structure trajectory and one OUT file are loaded.
+- During trajectory playback, the output analysis follows the current frame without repeatedly flashing the whole panel.
+- SCF convergence windows follow the current frame.
+- The four convergence-metric charts are plotted on a log scale for readability, while displayed values remain the original raw values.
+- **The optimization energy chart skips the CP2K initial guess energy point so Step 1 aligns with the corresponding force and step metrics.**
+- Measurement trend, SCF convergence, and optimization charts can now all be opened in a larger chart window.
+- Chart windows support dragging, resizing, box zoom, reset, minimum-point selection, keyboard point navigation, and clicking points to sync the structure frame.
+- Improved measurement tools with saved values, trend CSV export, and current-frame highlighting.
+- Improved INP/restart tools with a source editor, edited-file export, local custom snippets, delete confirmation, and side-by-side comparison.
+- **Added a custom INP snippet library: local common snippets can be saved, inserted at the current cursor position, and deleted with confirmation.**
+- **Added INP file comparison: two INP/restart files can be compared side by side, showing added, deleted, and modified lines, with add, delete, left/right replace, save, and enlarged comparison actions.**
+- Improved INP comparison scroll behavior after edits to avoid jumping back to the first line.
+- Improved larger-structure performance in bond inference by using spatial buckets instead of only brute-force pair checks.
+- Added public sample files under `samples/`.
 
-## Features
+## Supported files
 
-- Open local `xyz`, `inp`, `out`, `restart`, `pdb`, `cif`, `log`, and text-like files.
-- Parse multi-frame XYZ trajectories.
-- Extract coordinates from CP2K `&COORD` sections and CP2K output coordinate blocks.
-- Display structures on a canvas viewer with rotation, zoom, pan, atom labels, frame switching, and trajectory playback.
-- Infer simple bonds from covalent radii and show element colors based on JMol/CPK conventions.
-- Measure distances, angles, and dihedral angles by selecting atoms.
-- Plot measurement trends across trajectory frames and export the trend as CSV.
-- Parse CP2K input/restart files into an expandable section tree.
-- Analyze CP2K output files for metadata, energies, SCF records, geometry optimization steps, MD records, atom kinds, timings, warnings, errors, and run status.
-- Link one loaded structure trajectory with one loaded CP2K output file to display optimization metrics per frame.
-- Plot geometry optimization metrics, including total energy, step size, and gradient data.
-- Export the current frame as an XYZ file.
-- Generate a command line for launching Multiwfn with the selected structure file.
+Files can be loaded with the top Open button or by drag and drop.
 
-## Repository Layout
+- `.xyz`: structures and multi-frame trajectories.
+- `.inp`: CP2K input files; `&COORD` and `&CELL` are read when present.
+- `.restart`: CP2K restart files, read similarly to input files.
+- `.out` / `.log`: CP2K output files for analysis; coordinate blocks may also be displayed.
+- `.pdb`: PDB structures.
+- `.cif`: CIF structures with Cartesian coordinate fields.
+- `.txt`: text files; the parser will try to recognize structure-like content.
 
-```text
-.
-├── app/
-│   ├── index.html          # Main application page
-│   ├── styles.css          # Application styles
-│   ├── src/
-│   │   ├── app.js          # UI state, file loading, panels, charts, exports
-│   │   ├── parsers.js      # XYZ/CP2K/PDB/CIF parsers and output analysis
-│   │   └── viewer.js       # Canvas structure viewer and geometry math
-│   ├── *.xyz               # Example structure/trajectory file
-│   └── *.out               # Example CP2K output file
-├── README.md
-└── README.zh-CN.md
-```
+## Main features
 
-## Requirements
+### Structure viewer
 
-- A modern desktop browser, such as Chrome, Edge, Firefox, or Safari.
-- No project dependencies need to be installed for normal use.
-- Python or another static file server is optional if you prefer to serve the app from `localhost`.
+- Displays atomic structures in the central canvas.
+- Supports mouse rotate, zoom, and pan.
+- Supports previous frame, next frame, play/pause, frame slider, and playback speed for multi-frame structures.
+- Supports atom sphere size control.
+- Supports showing or hiding element labels.
+- Click an atom to inspect element, type/kind, and coordinates.
+- Uses Jmol/CPK-like element colors.
+- Infers bonds from element radii and interatomic distances.
+- Draws unit-cell edges when cell data is available.
+- Exports the current frame as an XYZ file.
 
-## Quick Start
+### Structure information
 
-### Option 1: Open the HTML file directly
+- Shows file name, file type, atom count, frame count, current frame, and composition.
+- When a structure is linked to an OUT file, shows the linked OUT file, optimization step, energy, energy breakdown block, maximum step, RMS step, maximum gradient, and RMS gradient.
+- The exported XYZ frame comment can include current-frame optimization metrics when available.
 
-Open this file in your browser:
+### Measurements
 
-```text
-app/index.html
-```
+- Select 2 atoms to measure distance or bond length.
+- Select 3 atoms to measure angle.
+- Select 4 atoms to measure dihedral angle.
+- Shows the selected atom list.
+- For multi-frame structures, plots distance/angle/dihedral trends across frames.
+- Highlights the current frame in the trend plot.
+- Opens a larger trend chart window.
+- Saves the current measurement value to a saved-measurements list.
+- Deletes saved measurements.
+- Exports trend data as CSV.
 
-Then click **Open** in the top-right toolbar, or drag files into the page.
+### CP2K OUT analysis
 
-### Option 2: Run a local static server
+- Parses CP2K `.out` and `.log` files.
+- Shows end status: normal, aborted, or unknown.
+- Shows line count, CP2K version, run type, project name, QS method, XC functional, cutoff, and relative cutoff.
+- Counts energy points, SCF runs, SCF records, optimization steps, MD steps, warnings, and errors.
+- Shows energy breakdown records, including core charge overlap energy, self energy, core Hamiltonian energy, Hartree energy, exchange-correlation energy, and total energy.
+- Shows SCF iteration tables, convergence values, convergence status, and an SCF convergence plot.
+- Shows geometry optimization information, including optimizer, convergence state, recent steps, and optimization charts.
+- Optimization charts include total energy, maximum force, RMS gradient, maximum step size, and RMS step size.
+- Convergence metric charts use log-scale plotting for readability, while labels and status values keep raw values.
+- The energy chart omits the CP2K initial guess energy point to align optimization steps with structure frames.
+- Clicking an optimization chart point can sync the structure frame and analysis panel.
+- Shows MD records such as time, temperature, kinetic energy, potential energy, and conserved quantity when found (test version).
+- Shows atom kind information, including element, count, basis set, and potential.
+- Shows recognized file records and CP2K pipe-style parameter records.
+- Shows cell, force, stress, and timing records.
+- Groups warnings and errors to make repeated issues easier to inspect.
+- Can locate energy blocks, SCF blocks, parameter lines, warning lines, and error lines in the OUT source.
 
-From the repository root:
+### Structure-OUT linking
+
+- When exactly one structure trajectory and one OUT file are loaded, the app tries to link them automatically.
+- After linking, changing the structure frame updates the related energy breakdown, SCF block, and optimization metrics in the output panel.
+- If the OUT file contains an extra initial energy or SCF block, the app tries to offset the link automatically.
+- If frame count and OUT record count do not fully match, the app shows a linking warning.
+
+### CP2K INP / restart tools
+
+- Reads `.inp` and `.restart` files.
+- Extracts atoms from `&COORD` for structure display.
+- Extracts cell vectors from `&CELL` for unit-cell display.
+- Displays the input file as an expandable `&SECTION` tree.
+- Shows and edits raw INP text.
+- Exports edited INP/restart files.
+- Saves local custom INP snippets.
+- Inserts custom snippets at the current cursor position.
+- Confirms before deleting custom snippets.
+- Compares two INP/restart files.
+- Shows same, added, removed, and modified lines.
+- Provides add-to-left, add-to-right, delete-left, delete-right, replace-left-with-right, and replace-right-with-left actions.
+- Saves edited left or right files.
+- Opens an enlarged comparison window.
+- Preserves comparison scroll position after edits where possible.
+
+### Chart windows
+
+- Measurement trends, SCF convergence, and geometry optimization plots can open in a separate large window.
+- Chart windows can be dragged and resized.
+- Supports box-select zoom.
+- Supports double-click or button reset.
+- Supports minimum-point selection.
+- Supports left/right arrow key navigation between chart points.
+- Clicking a chart point can sync the current structure frame and analysis panel.
+
+### Layout and UI
+
+- Three-column layout: project files on the left, structure canvas in the center, analysis panels on the right.
+- Left and right columns can be resized by dragging.
+- Layout can be reset.
+- Right-side tabs include Structure, Measure, Output Analysis, and INP Structure.
+- Right-side panels can be opened separately in a larger view.
+- Chinese and English UI are supported.
+- Language selection is stored locally in the browser.
+
+### Multiwfn helper (test version, to be improved)
+
+- Lets the user enter the Multiwfn executable path.
+- Generates a command such as `"Multiwfn.exe" "filename"` for the current structure file.
+- The app only generates the command; it does not launch Multiwfn.
+
+## Basic usage
+
+1. Open `index.html`.
+2. Click Open, or drag structure/OUT/INP files into the page.
+3. Use the project file list on the left to switch files.
+4. Use the central canvas to inspect the structure, and the frame controls to play trajectories or adjust display settings.
+5. Use the right-side tabs for structure information, measurements, OUT analysis, and INP tools.
+6. If one structure trajectory and one OUT file are loaded together, the app tries to link frames with OUT analysis data automatically.
+7. Export data when needed: current-frame XYZ, measurement trend CSV, or edited INP/restart files.
+
+If opening `index.html` directly is limited by browser local-file rules, start a small static server inside the folder:
 
 ```bash
-cd app
-python -m http.server 8000
+python -m http.server 8765
 ```
 
 Then open:
 
 ```text
-http://localhost:8000
+http://127.0.0.1:8765/
 ```
 
-This mode is useful when your browser or local security settings handle `file://` pages strictly.
+## Sample files
 
-## Basic Usage
+The `samples/` folder contains public test files:
 
-1. Open `app/index.html` directly, or start the local static server.
-2. Load a structure or CP2K file with the **Open** button, or drag it into the app.
-3. Use the file list on the left to switch between loaded files.
-4. Use the structure viewer in the center to inspect atoms and frames.
-5. Use the panels on the right for structure information, measurements, CP2K output analysis, and CP2K input/restart trees.
+- `CsPbBr3_mp-567629_primitive-pos-slab-1hole1Br.inp`
+- `CsPbBr3_mp-567629_primitive-pos-slab-2hole.inp`
+- `CsPbBr3_mp-567629_primitive-pos-slab-2hole2Br-pos-1.xyz`
+- `CsPbBr3_mp-567629_primitive-pos-slab-2hole2Br.out`
 
-The sample `.xyz` and `.out` files in `app/` can be used for a first test.
+They can be used to test structure display, trajectory playback, OUT analysis, structure-OUT linking, and INP comparison.
 
-## Viewer Controls
+## Notes and limitations
 
-- Left-drag: rotate the structure.
-- Mouse wheel: zoom in or out.
-- Right-drag, `Ctrl` + drag, or `Alt` + drag: zoom.
-- `Shift` + drag or middle-button drag: pan.
-- Click atoms: select atoms for measurement.
-- Select 2 atoms: distance.
-- Select 3 atoms: angle.
-- Select 4 atoms: dihedral angle.
-- Left/right arrow keys: switch frames.
-- Space: play or pause the trajectory.
-- Frame slider: jump to a specific frame.
-- Speed slider: change playback speed.
-- Atom size slider: adjust atom sphere size.
-- Atom label toggle: show or hide element labels.
+- This is a local front-end tool that runs mainly in the browser.
+- Files are read locally by the browser; **the app itself does not upload files to a remote server** and has no remote server.
+- CP2K OUT files can vary between versions and print settings. The parser tries to recognize common CP2K output patterns. Current testing is based on CP2K 202502.
+- Bonds are inferred from radii and distances; they are not a strict quantum-chemical bond-order analysis.
+- CIF support currently focuses on Cartesian coordinate fields.
+- The Multiwfn helper only generates a command and does not start external programs.
+- Custom INP snippets and language settings are stored in browser localStorage. They may disappear after switching browsers or clearing browser data.
 
-## Working With CP2K Output
+## Development notes
 
-Load a CP2K `.out` or `.log` file to inspect parsed run information. The output analysis panel can show:
+- Main page: `index.html`
+- Styles: `styles.css`
+- Source code: `src/`
+- Sample files: `samples/`
 
-- CP2K version and run metadata.
-- Input file, project name, run type, print level, and selected DFT settings.
-- Energy records.
-- SCF convergence records.
-- Geometry optimization status and recent optimization steps.
-- MD step data when detected.
-- Atom and kind information.
-- Timing records.
-- Warnings, errors, abnormal termination markers, and normal-end markers.
+Main modules under `src/`:
 
-If you load exactly one structure trajectory and one CP2K output file, CP2K View tries to align trajectory frames with geometry optimization steps. When alignment succeeds, frame-level energy and convergence metrics are shown in the structure panel and optimization plots.
-
-## Exporting Data
-
-- **Export XYZ** saves the currently visible frame as an `.xyz` file.
-- **Export CSV** in the measurement panel saves the current distance/angle/dihedral trend across frames.
-
-## Multiwfn Helper
-
-The Multiwfn panel generates a command such as:
-
-```bash
-"Multiwfn.exe" "structure.xyz"
-```
-
-You can change the executable path in the input field. This helper only generates the command; it does not launch Multiwfn from the browser.
-
-## Notes and Limitations
-
-- The app is a client-side prototype. All selected files are read locally by the browser File API.
-- CP2K output formats vary by version, calculation type, and print settings. Some coordinate blocks or analysis records may not be detected yet.
-- Bond rendering is inferred heuristically from covalent radii and is intended for visual inspection, not chemical validation.
-- CIF support currently expects Cartesian atom coordinates.
-- Multiwfn integration is currently command generation only.
-
-## Development
-
-There is no build pipeline at the moment. Edit the files under `app/` and refresh the browser.
-
-For local testing:
-
-```bash
-cd app
-python -m http.server 8000
-```
-
-Then open `http://localhost:8000`.
-
-## Roadmap
-
-- Improve CP2K output coordinate and trajectory parsing.
-- Add more robust periodic boundary condition support.
-- Add cube, charge density, orbital, and vibrational mode visualization.
-- Add an optional local bridge for launching external tools such as Multiwfn.
-- Add automated parser tests with representative CP2K files.
-
-## Feedback
-
-If you find bugs, parsing problems, or have feature suggestions, please leave a message on GitHub Issues or contact the developer by email:
-
-```text
-ybx20021218@163.com
-```
-
-## License
-
-This project is licensed under the GNU Affero General Public License v3.0 (AGPL-3.0).
-
-You are free to use, modify, and distribute this software under the terms of the AGPL-3.0 license.
-
-If you modify this software and make it available to users over a network, you must also make the complete corresponding source code available under the same license.
-
-See the LICENSE file for details.
-
+- `app.js`: main application flow and module wiring.
+- `viewer.js`: structure canvas, atom colors, bonds, unit cell, and mouse interaction.
+- `parsers.js`: parsers for XYZ, INP, restart, OUT, PDB, CIF, and related data.
+- `files.js`: file import and project file list.
+- `frame-controls.js`: frame navigation, playback, speed, atom size, and labels.
+- `measurement.js`: distances, angles, dihedrals, and measurement trends.
+- `saved-measurements.js`: saved measurement values.
+- `structure-info.js`: structure information panel.
+- `out-analysis-data.js` / `out-analysis-panel.js` / `out-locator.js` / `out-linker.js`: OUT analysis, source location, and structure-OUT linking.
+- `input-panel.js`: INP tree, editor, custom snippets, and INP comparison.
+- `chart-data.js` / `chart-drawing.js` / `chart-window-frame.js` / `chart-window-content.js` / `optimization-chart-panel.js`: chart data, drawing, and large chart windows.
+- `layout.js` / `inspector-panels.js`: three-column layout and right-side panels.
+- `i18n.js`: Chinese and English UI text.
+- `utils.js`: shared utility helpers.
