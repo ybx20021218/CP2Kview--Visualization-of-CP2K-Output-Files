@@ -1,8 +1,5 @@
 # CP2K View
-<p align="right">
-  <a href="./README.md">English</a> |
-  <a href="./README_CN.md">简体中文</a>
-</p>
+[English](README.md) | [简体中文](README_CN.md)
 
 Created by bxyao | ybx20021218@163.com
 
